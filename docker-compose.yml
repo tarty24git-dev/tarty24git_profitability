@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  trade-finance-engine:
+    build: .
+    image: cth/trade-finance-profitability:1.0.0
+    container_name: cth-trade-finance-profitability
+    ports:
+      - "8080:8080"
+    environment:
+      - JAVA_OPTS=-Xms2g -Xmx8g -XX:+UseG1GC
+    restart: always

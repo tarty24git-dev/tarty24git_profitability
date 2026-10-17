@@ -1,0 +1,17 @@
+/app/src/main/java/com/cth/tradefinance/service/DynamicReportService.java
+/app/src/main/java/com/cth/tradefinance/config/WebSocketConfig.java
+/app/src/main/java/com/cth/tradefinance/TradeFinanceApplication.java
+/app/src/main/java/com/cth/tradefinance/config/SecurityConfig.java
+/app/src/main/java/com/cth/tradefinance/repository/TradeTransactionRepository.java
+/app/src/main/java/com/cth/tradefinance/service/UserService.java
+/app/src/main/java/com/cth/tradefinance/model/SystemConfig.java
+/app/src/main/java/com/cth/tradefinance/model/User.java
+/app/src/main/java/com/cth/tradefinance/controller/UserController.java
+/app/src/main/java/com/cth/tradefinance/repository/UserRepository.java
+/app/src/main/java/com/cth/tradefinance/controller/AuthController.java
+/app/src/main/java/com/cth/tradefinance/repository/SystemConfigRepository.java
+/app/src/main/java/com/cth/tradefinance/controller/TradeFinanceController.java
+/app/src/main/java/com/cth/tradefinance/service/ProfitabilityEngineService.java
+/app/src/main/java/com/cth/tradefinance/model/CustomReport.java
+/app/src/main/java/com/cth/tradefinance/repository/CustomReportRepository.java
+/app/src/main/java/com/cth/tradefinance/model/TradeTransaction.java

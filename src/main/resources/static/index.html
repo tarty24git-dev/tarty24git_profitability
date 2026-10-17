@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTH TI Plus Profitability Engine</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.5.1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .sidebar { background-color: #1e293b; min-height: 100vh; border-right: 1px solid rgba(255,255,255,0.05); }
+        .nav-link { color: #94a3b8; border-radius: 8px; margin-bottom: 4px; padding: 10px 16px; }
+        .nav-link:hover, .nav-link.active { color: #38bdf8; background-color: rgba(56, 189, 248, 0.1); }
+        .kpi-card { background: #1e293b; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; }
+        .kpi-value { font-size: 1.75rem; font-weight: 700; color: #f8fafc; }
+        .kpi-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; }
+        .table-dark-custom { background-color: #1e293b; color: #f8fafc; }
+        .table-dark-custom th { background-color: #0f172a; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .status-badge { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 sidebar p-3">
+                <div class="d-flex align-items-center mb-4 ps-2">
+                    <i class="bi bi-graph-up-arrow fs-3 text-info me-2"></i>
+                    <div>
+                        <h6 class="m-0 fw-bold text-info" id="sidebarAppName">CTH ENGINE</h6>
+                        <small class="text-secondary" style="font-size: 0.7rem;">TI Plus Profitability</small>
+                    </div>
+                </div>
+                <ul class="nav flex-column">
+                    <li class="nav-item"><a class="nav-link active" href="#dashboard" data-bs-toggle="tab"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#processCsv" data-bs-toggle="tab"><i class="bi bi-file-earmark-spreadsheet me-2"></i> Process CSV</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#reportBuilder" data-bs-toggle="tab"><i class="bi bi-file-earmark-bar-graph me-2"></i> Report Builder</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#userMaintenance" data-bs-toggle="tab"><i class="bi bi-people me-2"></i> User Admin</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#systemSettings" data-bs-toggle="tab"><i class="bi bi-gear me-2"></i> System Config</a></li>
+                    <li class="nav-item mt-3"><a class="nav-link text-warning" href="/swagger-ui.html" target="_blank"><i class="bi bi-code-slash me-2"></i> Swagger UI API</a></li>
+                    <li class="nav-item"><a class="nav-link text-danger" href="/login.html"><i class="bi bi-box-arrow-right me-2"></i> Logout</a></li>
+                </ul>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-10 p-4">
+                <div class="tab-content">
+
+                    <!-- Dashboard Tab -->
+                    <div class="tab-pane fade show active" id="dashboard">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <h3 class="fw-bold m-0" id="mainHeaderTitle">TI Plus Profitability Dashboard</h3>
+                                <p class="text-secondary small m-0">Realtime trade finance margin & revenue analytics</p>
+                            </div>
+                            <span class="badge bg-success" id="wsStatus"><i class="bi bi-wifi me-1"></i> Live Stomp Connected</span>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-3">
+                                <div class="kpi-card">
+                                    <div class="kpi-title">Total Processed Volume</div>
+                                    <div class="kpi-value text-info" id="kpiVolume">$0.00</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="kpi-card">
+                                    <div class="kpi-title">Total Net Profit</div>
+                                    <div class="kpi-value text-success" id="kpiProfit">$0.00</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="kpi-card">
+                                    <div class="kpi-title">Average Margin %</div>
+                                    <div class="kpi-value text-warning" id="kpiMargin">0.00%</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="kpi-card">
+                                    <div class="kpi-title">Total Transactions</div>
+                                    <div class="kpi-value text-light" id="kpiCount">0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card bg-dark border-secondary">
+                            <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+                                <h6 class="m-0 fw-bold">Recent Finastra TI Plus Trade Transactions</h6>
+                                <button class="btn btn-sm btn-outline-info" onclick="loadTransactions()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-dark-custom align-middle m-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Tx Ref</th>
+                                                <th>TI Ref</th>
+                                                <th>Customer</th>
+                                                <th>Product</th>
+                                                <th>Principal Amount</th>
+                                                <th>Fee Income</th>
+                                                <th>Net Profit</th>
+                                                <th>Margin %</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="txTableBody">
+                                            <tr><td colspan="9" class="text-center text-secondary py-3">No transactions processed yet.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Process CSV Tab -->
+                    <div class="tab-pane fade" id="processCsv">
+                        <h4 class="fw-bold mb-3">Finastra TI Plus CSV Profitability Engine</h4>
+                        <div class="card bg-dark border-secondary p-4 mb-4" style="max-width: 600px;">
+                            <h6 class="fw-bold mb-3">Upload TI Plus Input CSV</h6>
+                            <form id="csvForm">
+                                <div class="mb-3">
+                                    <input type="file" id="csvFile" class="form-control bg-dark text-white border-secondary" accept=".csv" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary"><i class="bi bi-cpu me-1"></i> Process & Download Output CSV</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Report Builder Tab -->
+                    <div class="tab-pane fade" id="reportBuilder">
+                        <h4 class="fw-bold mb-3">Online Configurable Query & Report Builder</h4>
+                        <div class="card bg-dark border-secondary p-4 mb-4">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label text-secondary">Select Table</label>
+                                    <select id="reportTableSelect" class="form-select bg-dark text-white border-secondary">
+                                        <option value="trade_transactions">trade_transactions</option>
+                                        <option value="app_users">app_users</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label text-secondary">Select Fields</label>
+                                    <div id="fieldCheckboxes" class="d-flex flex-wrap gap-3 p-2 border border-secondary rounded">
+                                        <!-- Dynamically loaded -->
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-info me-2" onclick="runReport()"><i class="bi bi-play-fill"></i> Execute Report</button>
+                            </div>
+                        </div>
+
+                        <div class="card bg-dark border-secondary p-3">
+                            <h6 class="fw-bold mb-3">Report Results</h6>
+                            <div class="table-responsive">
+                                <table class="table table-dark-custom align-middle" id="reportResultTable">
+                                    <thead><tr id="reportHeaders"><th>Field</th></tr></thead>
+                                    <tbody id="reportData"><tr><td class="text-secondary">Run report to see output.</td></tr></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Admin Tab -->
+                    <div class="tab-pane fade" id="userMaintenance">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="fw-bold m-0">User Account & Security Maintenance</h4>
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal"><i class="bi bi-person-plus"></i> Create User</button>
+                        </div>
+                        <div class="card bg-dark border-secondary p-0">
+                            <table class="table table-dark-custom align-middle m-0">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Username</th>
+                                        <th>Full Name</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Account Status</th>
+                                        <th>2FA SMS/Email</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- System Config Tab -->
+                    <div class="tab-pane fade" id="systemSettings">
+                        <h4 class="fw-bold mb-3">System & Security Configuration</h4>
+                        <div class="card bg-dark border-secondary p-4" style="max-width: 600px;">
+                            <form id="settingsForm">
+                                <div class="mb-3">
+                                    <label class="form-label text-secondary">Application Name</label>
+                                    <input type="text" id="cfgAppName" class="form-control bg-dark text-white border-secondary" value="CTH TI Plus Profitability Engine">
+                                </div>
+                                <div class="mb-3 form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="cfgLdap">
+                                    <label class="form-check-label text-light" for="cfgLdap">Enable Windows Active Directory LDAP Authentication</label>
+                                </div>
+                                <div class="mb-3 form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="cfg2fa">
+                                    <label class="form-check-label text-light" for="cfg2fa">Enable 2FA SMS/Email Authentication Switch</label>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-secondary">Active Database Engine</label>
+                                    <select id="cfgDbType" class="form-select bg-dark text-white border-secondary">
+                                        <option value="DB2">IBM DB2 (Default)</option>
+                                        <option value="Oracle">Oracle Database</option>
+                                        <option value="PostgreSQL">PostgreSQL</option>
+                                        <option value="SQLServer">Microsoft SQL Server</option>
+                                        <option value="H2">H2 In-Memory</option>
+                                        <option value="CSV">CSV File DB</option>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn btn-success" onclick="saveSettings()"><i class="bi bi-save me-1"></i> Save Configurations</button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div class="modal fade" id="addUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Create New User</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="newUserForm">
+                        <div class="mb-2"><input type="text" id="newUsername" class="form-control bg-dark text-white border-secondary" placeholder="Username" required></div>
+                        <div class="mb-2"><input type="password" id="newPassword" class="form-control bg-dark text-white border-secondary" placeholder="Password (default Qwerty123$)" value="Qwerty123$" required></div>
+                        <div class="mb-2"><input type="text" id="newFullName" class="form-control bg-dark text-white border-secondary" placeholder="Full Name" required></div>
+                        <div class="mb-2"><input type="email" id="newEmail" class="form-control bg-dark text-white border-secondary" placeholder="Email" required></div>
+                        <button type="button" class="btn btn-primary w-100 mt-2" onclick="createUser()">Create Account</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            loadMetrics();
+            loadTransactions();
+            loadUsers();
+            loadReportMetadata();
+            connectWebSocket();
+        });
+
+        function connectWebSocket() {
+            try {
+                const socket = new SockJS('/ws-dashboard');
+                const stompClient = Stomp.over(socket);
+                stompClient.debug = null;
+                stompClient.connect({}, () => {
+                    document.getElementById('wsStatus').innerHTML = '<i class="bi bi-wifi me-1"></i> Live WebSocket Connected';
+                    stompClient.subscribe('/topic/metrics', (data) => {
+                        const m = JSON.parse(data.body);
+                        updateMetricsUI(m);
+                        loadTransactions();
+                    });
+                });
+            } catch(e) {}
+        }
+
+        async function loadMetrics() {
+            const res = await fetch('/api/trade/metrics');
+            if (res.ok) updateMetricsUI(await res.json());
+        }
+
+        function updateMetricsUI(m) {
+            document.getElementById('kpiVolume').textContent = '$' + Number(m.totalVolume || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('kpiProfit').textContent = '$' + Number(m.totalNetProfit || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('kpiMargin').textContent = (m.averageMargin || 0) + '%';
+            document.getElementById('kpiCount').textContent = m.totalCount || 0;
+        }
+
+        async function loadTransactions() {
+            const res = await fetch('/api/trade/transactions');
+            if (res.ok) {
+                const list = await res.json();
+                const tbody = document.getElementById('txTableBody');
+                if (list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-secondary py-3">No transactions processed yet.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = list.map(t => `
+                    <tr>
+                        <td><strong>${t.transactionRef}</strong></td>
+                        <td>${t.tiReference || '-'}</td>
+                        <td>${t.customerName || '-'}</td>
+                        <td><span class="badge bg-secondary">${t.productType}</span></td>
+                        <td>$${Number(t.principalAmount).toLocaleString()}</td>
+                        <td>$${Number(t.feeIncome).toLocaleString()}</td>
+                        <td class="${t.netProfit >= 0 ? 'text-success' : 'text-danger'} fw-bold">$${Number(t.netProfit).toLocaleString()}</td>
+                        <td>${t.marginPercentage}%</td>
+                        <td><span class="badge bg-success">${t.status}</span></td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        document.getElementById('csvForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('csvFile');
+            if (!fileInput.files[0]) return;
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            const res = await fetch('/api/trade/process-csv', { method: 'POST', body: formData });
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'TI_Plus_Output_Response.csv';
+                a.click();
+                alert('CSV Processed successfully! Response file downloaded.');
+                loadMetrics();
+                loadTransactions();
+            } else {
+                alert('Error processing CSV');
+            }
+        });
+
+        async function loadReportMetadata() {
+            const res = await fetch('/api/trade/report/metadata');
+            if (res.ok) {
+                const items = await res.json();
+                window.reportMetadata = items;
+                renderFieldCheckboxes('trade_transactions');
+            }
+        }
+
+        document.getElementById('reportTableSelect').addEventListener('change', (e) => {
+            renderFieldCheckboxes(e.target.value);
+        });
+
+        function renderFieldCheckboxes(tableName) {
+            const container = document.getElementById('fieldCheckboxes');
+            const fields = (window.reportMetadata || []).filter(i => i.table === tableName);
+            container.innerHTML = fields.map(f => `
+                <div class="form-check">
+                    <input class="form-check-input report-field-cb" type="checkbox" value="${f.field}" id="cb_${f.field}" checked>
+                    <label class="form-check-label text-light small" for="cb_${f.field}">${f.field}</label>
+                </div>
+            `).join('');
+        }
+
+        async function runReport() {
+            const table = document.getElementById('reportTableSelect').value;
+            const fields = Array.from(document.querySelectorAll('.report-field-cb:checked')).map(cb => cb.value);
+
+            const res = await fetch('/api/trade/report/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tableName: table, fields: fields })
+            });
+
+            if (res.ok) {
+                const rows = await res.json();
+                const headers = document.getElementById('reportHeaders');
+                const tbody = document.getElementById('reportData');
+
+                headers.innerHTML = fields.map(f => `<th>${f}</th>`).join('');
+                if (rows.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="10" class="text-secondary">No records found.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = rows.map(r => {
+                    const vals = Array.isArray(r) ? r : [r];
+                    return '<tr>' + vals.map(v => `<td>${v ?? ''}</td>`).join('') + '</tr>';
+                }).join('');
+            }
+        }
+
+        async function loadUsers() {
+            const res = await fetch('/api/users');
+            if (res.ok) {
+                const users = await res.json();
+                document.getElementById('usersTableBody').innerHTML = users.map(u => `
+                    <tr>
+                        <td>${u.id}</td>
+                        <td><strong>${u.username}</strong></td>
+                        <td>${u.fullName || '-'}</td>
+                        <td>${u.email || '-'}</td>
+                        <td><span class="badge bg-info">${u.role}</span></td>
+                        <td>
+                            ${u.accountNonLocked ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-danger">Locked</span>'}
+                        </td>
+                        <td>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" ${u.twoFactorEnabled ? 'checked' : ''} onchange="toggle2fa(${u.id}, this.checked)">
+                            </div>
+                        </td>
+                        <td>
+                            ${u.accountNonLocked ?
+                                `<button class="btn btn-sm btn-outline-warning" onclick="lockUser(${u.id})">Lock</button>` :
+                                `<button class="btn btn-sm btn-outline-success" onclick="unlockUser(${u.id})">Unlock</button>`}
+                            <button class="btn btn-sm btn-outline-info" onclick="resetPass(${u.id})">Reset Pass</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        async function createUser() {
+            const username = document.getElementById('newUsername').value;
+            const password = document.getElementById('newPassword').value;
+            const fullName = document.getElementById('newFullName').value;
+            const email = document.getElementById('newEmail').value;
+
+            const res = await fetch('/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, fullName, email, role: 'USER' })
+            });
+
+            if (res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('addUserModal')).hide();
+                loadUsers();
+            }
+        }
+
+        async function lockUser(id) {
+            await fetch(`/api/users/${id}/lock`, { method: 'POST' });
+            loadUsers();
+        }
+
+        async function unlockUser(id) {
+            await fetch(`/api/users/${id}/unlock`, { method: 'POST' });
+            loadUsers();
+        }
+
+        async function resetPass(id) {
+            const pass = prompt("Enter new password:", "Qwerty123$");
+            if (pass) {
+                await fetch(`/api/users/${id}/reset-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ newPassword: pass })
+                });
+                alert('Password reset successfully!');
+            }
+        }
+
+        async function toggle2fa(id, enabled) {
+            await fetch(`/api/users/${id}/toggle-2fa`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled })
+            });
+        }
+
+        async function saveSettings() {
+            const settings = {
+                "app.name": document.getElementById('cfgAppName').value,
+                "auth.ldap.enabled": document.getElementById('cfgLdap').checked.toString(),
+                "auth.2fa.enabled": document.getElementById('cfg2fa').checked.toString(),
+                "db.type": document.getElementById('cfgDbType').value
+            };
+
+            const res = await fetch('/api/users/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            });
+
+            if (res.ok) {
+                alert('Configurations saved successfully!');
+            }
+        }
+    </script>
+</body>
+</html>

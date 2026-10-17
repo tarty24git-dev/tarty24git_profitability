@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:db2://localhost:50000/TRADEDB
+    driver-class-name: com.ibm.db2.jcc.DB2Driver
+    username: db2admin
+    password: db2password
+  jpa:
+    database-platform: org.hibernate.dialect.DB2Dialect
+    hibernate:
+      ddl-auto: update
